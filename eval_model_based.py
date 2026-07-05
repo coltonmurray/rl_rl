@@ -8,6 +8,7 @@ import torch
 
 from env_setup import action_count, load_config, make_gym_env
 from policy import make_policy, sample_actions
+from wandb_utils import init_wandb, log_metrics
 from world_model import load_world_model
 
 
@@ -40,6 +41,7 @@ def plan_action(model, obs, obs_mean, obs_std, horizon: int, candidates: int, di
 
 def evaluate(config_path: str, mode: str) -> dict[str, float]:
     config = load_config(config_path)
+    run = init_wandb(config, job_type=f"eval_{mode}", name=f"eval-{mode}")
     plan_cfg = config["planning"]
     env = make_gym_env(config)
     act_dim = action_count()
@@ -91,12 +93,16 @@ def evaluate(config_path: str, mode: str) -> dict[str, float]:
         episode_returns.append(total_reward)
 
     env.close()
-    return {
+    metrics = {
         "avg_reward": float(np.mean(episode_returns)),
         "goals_for": float(goals_for),
         "goals_against": float(goals_against),
         "avg_latency_ms": float(np.mean(latencies) * 1000.0),
     }
+    log_metrics(run, metrics, prefix=f"eval/{mode}")
+    if run is not None:
+        run.finish()
+    return metrics
 
 
 if __name__ == "__main__":

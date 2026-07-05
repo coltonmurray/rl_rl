@@ -9,6 +9,18 @@ reward_weights:
   goal: 10.0
   touch: 0.1
 
+wandb:
+  enabled: true
+  project: rl_rl
+  entity:
+  group:
+  mode: online
+  tags: []
+  dir: outputs/wandb
+  cache_dir: outputs/wandb_cache
+  data_dir: outputs/wandb_data
+  log_artifacts: true
+
 ppo:
   n_proc: 4
   timesteps: 1000000

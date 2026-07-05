@@ -35,7 +35,10 @@ def train(config_path: str) -> None:
         standardize_obs=False,
         save_every_ts=250000,
         timestep_limit=int(cfg["timesteps"]),
-        log_to_wandb=False,
+        log_to_wandb=bool(config.get("wandb", {}).get("enabled", False)),
+        wandb_project_name=config.get("wandb", {}).get("project"),
+        wandb_group_name=config.get("wandb", {}).get("group"),
+        wandb_run_name="ppo",
     )
     learner.learn()
 

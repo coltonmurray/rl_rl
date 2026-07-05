@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch.nn.functional as F
 
 from env_setup import action_count, load_config
+from wandb_utils import init_wandb, log_artifact, log_metrics
 from world_model import WorldModel, save_world_model
 
 
@@ -55,6 +56,7 @@ def rollout_error(model, data, horizon, obs_mean, obs_std) -> float:
 def train(config_path: str) -> dict[str, float]:
     config = load_config(config_path)
     cfg = config["world_model"]
+    run = init_wandb(config, job_type="train_world_model")
     data = np.load(config["rollouts"]["output_path"])
 
     obs = torch.as_tensor(data["obs"], dtype=torch.float32)
@@ -99,7 +101,9 @@ def train(config_path: str) -> dict[str, float]:
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
-        print(f"epoch {epoch + 1}: train_loss={np.mean(losses):.5f}")
+        epoch_metrics = {"train_loss": float(np.mean(losses))}
+        print(f"epoch {epoch + 1}: train_loss={epoch_metrics['train_loss']:.5f}")
+        log_metrics(run, epoch_metrics, prefix="world_model", step=epoch + 1)
 
     model.eval()
     with torch.no_grad():
@@ -119,6 +123,11 @@ def train(config_path: str) -> dict[str, float]:
     metrics["rollout_10_mse"] = rollout_error(model, data, 10, obs_mean, obs_std)
 
     save_world_model(cfg["checkpoint_path"], model, obs_mean, obs_std, metrics)
+    log_metrics(run, metrics, prefix="world_model")
+    if config.get("wandb", {}).get("log_artifacts", True):
+        log_artifact(run, cfg["checkpoint_path"], artifact_type="world_model", name="world_model")
+    if run is not None:
+        run.finish()
     return metrics
 
 

@@ -7,11 +7,13 @@ import numpy as np
 
 from env_setup import action_count, load_config, make_gym_env
 from policy import make_policy, sample_actions
+from wandb_utils import init_wandb, log_artifact, log_metrics
 
 
 def collect(config_path: str) -> Path:
     config = load_config(config_path)
     cfg = config["rollouts"]
+    run = init_wandb(config, job_type="collect_rollouts")
     env = make_gym_env(config)
     act_dim = action_count()
     policy = make_policy(
@@ -32,6 +34,7 @@ def collect(config_path: str) -> Path:
 
     for episode in range(int(cfg["episodes"])):
         obs = env.reset()
+        episode_reward = 0.0
         for timestep in range(int(cfg["max_steps"])):
             action = sample_actions(policy, obs, act_dim)
             action_flat = action.reshape(-1)
@@ -46,10 +49,20 @@ def collect(config_path: str) -> Path:
                 rows["done"].append(done_flag)
                 rows["episode"].append(episode)
                 rows["timestep"].append(timestep)
+                episode_reward += float(reward[agent_idx])
 
             obs = next_obs
             if done_flag:
                 break
+        log_metrics(
+            run,
+            {
+                "episode_reward": episode_reward,
+                "episode_steps": timestep + 1,
+            },
+            prefix="rollouts",
+            step=episode,
+        )
 
     env.close()
 
@@ -65,6 +78,19 @@ def collect(config_path: str) -> Path:
         episode=np.asarray(rows["episode"], dtype=np.int64),
         timestep=np.asarray(rows["timestep"], dtype=np.int64),
     )
+    log_metrics(
+        run,
+        {
+            "transitions": len(rows["obs"]),
+            "episodes": int(cfg["episodes"]),
+            "mean_reward": float(np.mean(rows["reward"])) if rows["reward"] else 0.0,
+        },
+        prefix="rollouts",
+    )
+    if config.get("wandb", {}).get("log_artifacts", True):
+        log_artifact(run, out_path, artifact_type="rollout_dataset", name="rollouts")
+    if run is not None:
+        run.finish()
     return out_path
 
 

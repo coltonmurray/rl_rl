@@ -23,6 +23,7 @@ Small RLGym/RocketSim prototype for testing whether a learned one-step world mod
 - `train_world_model.py`: trains the MLP and reports one-step, 5-step, 10-step, reward, and naive-baseline metrics.
 - `eval_model_based.py`: random-shooting planner that executes the first action from the best predicted sequence.
 - `config.yaml`: edit horizon, candidate count, action repeat, reward weights, model size, LR, and batch size here.
+- `wandb_utils.py`: optional Weights & Biases setup, metric logging, and artifact logging.
 
 ## Basic flow
 
@@ -38,6 +39,24 @@ Optional PPO baseline:
 ```powershell
 python train_ppo.py --config config.yaml
 ```
+
+## Weights & Biases
+
+W&B is optional. To turn it on, log in once and set `wandb.enabled: true` in `config.yaml`.
+
+```powershell
+python -m wandb login
+```
+
+Logged data:
+
+- `collect_rollouts.py`: per-episode reward/length, transition count, rollout dataset artifact.
+- `train_world_model.py`: epoch train loss, final model metrics, world-model checkpoint artifact.
+- `eval_model_based.py`: average reward, goals for/against, inference latency.
+- `train_ppo.py`: uses `rlgym_ppo`'s native W&B logging when enabled.
+
+For local testing without uploading, set `wandb.enabled: true` and `wandb.mode: offline`.
+W&B run, cache, and staging files go under ignored `outputs/wandb*` directories by default.
 
 ## Current success checks
 
