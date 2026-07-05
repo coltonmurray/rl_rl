@@ -12,21 +12,27 @@ from wandb_utils import init_wandb, log_metrics
 from world_model import load_world_model
 
 
+def get_device(name: str) -> torch.device:
+    if name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(name)
+
+
 def _normalize(obs: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
     return (obs - mean) / std
 
 
 @torch.no_grad()
-def plan_action(model, obs, obs_mean, obs_std, horizon: int, candidates: int, discount: float) -> np.ndarray:
+def plan_action(model, obs, obs_mean, obs_std, device, horizon: int, candidates: int, discount: float) -> np.ndarray:
     act_dim = model.act_dim
     planned = []
     for agent_obs in obs:
-        obs_t = torch.as_tensor(agent_obs[None, :], dtype=torch.float32)
+        obs_t = torch.as_tensor(agent_obs[None, :], dtype=torch.float32, device=device)
         obs_t = _normalize(obs_t, obs_mean, obs_std).repeat(candidates, 1)
-        sequences = torch.randint(0, act_dim, size=(candidates, horizon))
-        score = torch.zeros(candidates)
+        sequences = torch.randint(0, act_dim, size=(candidates, horizon), device=device)
+        score = torch.zeros(candidates, device=device)
         pred_obs = obs_t
-        alive = torch.ones(candidates)
+        alive = torch.ones(candidates, device=device)
 
         for t in range(horizon):
             pred = model(pred_obs, sequences[:, t])
@@ -53,8 +59,12 @@ def evaluate(config_path: str, mode: str) -> dict[str, float]:
 
     if mode == "planner":
         model, obs_mean, obs_std, _metrics = load_world_model(config["world_model"]["checkpoint_path"])
+        device = get_device(str(config["world_model"].get("device", "auto")))
+        model = model.to(device)
+        obs_mean = obs_mean.to(device)
+        obs_std = obs_std.to(device)
     else:
-        model = obs_mean = obs_std = None
+        model = obs_mean = obs_std = device = None
 
     episode_returns = []
     latencies = []
@@ -72,6 +82,7 @@ def evaluate(config_path: str, mode: str) -> dict[str, float]:
                     obs,
                     obs_mean,
                     obs_std,
+                    device,
                     int(plan_cfg["horizon"]),
                     int(plan_cfg["candidate_sequences"]),
                     float(plan_cfg["discount"]),

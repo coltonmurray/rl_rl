@@ -62,5 +62,22 @@ W&B run, cache, and staging files go under ignored `outputs/wandb*` directories 
 
 - Cleaned bot still runs: the live RLBot-specific bot was replaced by a RLGym/RocketSim prototype, so the runnable check is importing the scripts and stepping the RLGym environment.
 - Rollout collection: `collect_rollouts.py` writes a compressed NumPy dataset.
-- World model: compare `one_step_mse` against `naive_one_step_mse` in `train_world_model.py`.
+- World model: compare `one_step_mse` against `naive_one_step_mse` in `train_world_model.py`. The script also prints raw-space MSE, group MSEs, and the worst individual observation features so it is easier to see what the model is missing.
 - Model-based action scoring: `eval_model_based.py` samples candidate action sequences, rolls them forward through the MLP, scores predicted reward, and executes the first action.
+
+## World Model Diagnostics
+
+The model predicts normalized observation deltas, then adds them to the current observation. This makes the "predict what changes" target explicit.
+
+Useful config knobs:
+
+```yaml
+world_model:
+  device: auto
+  eval_rollout_samples: 1000
+  eval_rollout_seed: 123
+```
+
+- `device: auto` uses CUDA if PyTorch can see it, otherwise CPU.
+- `eval_rollout_samples` limits the slower 5-step and 10-step rollout-error checks to a random sample.
+- Per-feature diagnostics are printed in raw normalized-observation space, so compare model vs naive values feature by feature.

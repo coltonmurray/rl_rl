@@ -35,8 +35,10 @@ class WorldModel(nn.Module):
         action_oh = F.one_hot(action.long(), num_classes=self.act_dim).float()
         x = torch.cat([obs.float(), action_oh], dim=-1)
         h = self.trunk(x)
+        delta = self.next_delta(h)
         return {
-            "next_obs": obs + self.next_delta(h),
+            "delta": delta,
+            "next_obs": obs + delta,
             "reward": self.reward(h).squeeze(-1),
             "done_logit": self.done_logit(h).squeeze(-1),
         }

@@ -28,6 +28,7 @@ def collect(config_path: str) -> Path:
         "reward": [],
         "next_obs": [],
         "done": [],
+        "agent": [],
         "episode": [],
         "timestep": [],
     }
@@ -36,17 +37,19 @@ def collect(config_path: str) -> Path:
         obs = env.reset()
         episode_reward = 0.0
         for timestep in range(int(cfg["max_steps"])):
+            obs_before = obs.copy()
             action = sample_actions(policy, obs, act_dim)
             action_flat = action.reshape(-1)
             next_obs, reward, done, truncated, _info = env.step(action)
             done_flag = bool(done or truncated)
 
-            for agent_idx in range(len(obs)):
-                rows["obs"].append(obs[agent_idx].copy())
+            for agent_idx in range(len(obs_before)):
+                rows["obs"].append(obs_before[agent_idx])
                 rows["action"].append(int(action_flat[agent_idx]))
                 rows["reward"].append(float(reward[agent_idx]))
                 rows["next_obs"].append(next_obs[agent_idx].copy())
                 rows["done"].append(done_flag)
+                rows["agent"].append(agent_idx)
                 rows["episode"].append(episode)
                 rows["timestep"].append(timestep)
                 episode_reward += float(reward[agent_idx])
@@ -75,6 +78,7 @@ def collect(config_path: str) -> Path:
         reward=np.asarray(rows["reward"], dtype=np.float32),
         next_obs=np.asarray(rows["next_obs"], dtype=np.float32),
         done=np.asarray(rows["done"], dtype=np.float32),
+        agent=np.asarray(rows["agent"], dtype=np.int64),
         episode=np.asarray(rows["episode"], dtype=np.int64),
         timestep=np.asarray(rows["timestep"], dtype=np.int64),
     )

@@ -46,6 +46,9 @@ world_model:
   batch_size: 512
   epochs: 20
   validation_fraction: 0.1
+  device: auto
+  eval_rollout_samples: 1000
+  eval_rollout_seed: 123
   checkpoint_path: outputs/world_model.pt
 
 planning:
