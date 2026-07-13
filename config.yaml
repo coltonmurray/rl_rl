@@ -5,56 +5,72 @@ env:
   no_touch_timeout_seconds: 30
   game_timeout_seconds: 300
 
-reward_weights:
-  goal: 10.0
-  touch: 0.1
+state_curriculum:
+  enabled: true
+  kickoff_probability: 0.6
+  ball_x_abs_max: 2500
+  ball_y_abs_max: 3500
+  ball_speed_max: 1200
+  car_distance_range: [900, 2200]
+  car_lateral_range: [-700, 700]
+  car_speed_range: [0, 900]
+  car_yaw_noise: 1.2
+  car_x_abs_max: 3600
+  car_y_abs_max: 4600
+  boost_range: [20, 80]
+
+necto_lite_reward:
+  goal: 20.0
+  concede: 20.0
+  ball_progress: 0.25
+  car_ball_dist: 0.005
+  alignment: 0.0
+  touch: 5.0
+  touch_accel: 2.0
+  touch_height: 0.1
+  boost_gain: 0.02
+  boost_spend: 0.0
+  demoed: 2.0
+  step_penalty: -0.001
+  no_touch_timeout_penalty: 2.0
+  team_spirit: 0.0
+  opponent_punish: 0.0
 
 wandb:
   enabled: true
   project: rl_rl
-  entity:
   group:
-  mode: online
-  tags: []
-  dir: outputs/wandb
-  cache_dir: outputs/wandb_cache
-  data_dir: outputs/wandb_data
-  log_artifacts: true
 
 ppo:
+  run_name: ppo-touch-v2-mixed-100m
   n_proc: 4
-  timesteps: 1000000
+  timesteps: 100000000
   batch_size: 50000
-  minibatch_size: 25000
-  policy_lr: 0.00005
+  minibatch_size: 10000
+  policy_lr: 0.0001
   critic_lr: 0.00005
-  ent_coef: 0.01
-  epochs: 1
-  hidden_sizes: [256, 256]
-
-rollouts:
-  episodes: 20
-  max_steps: 2000
-  policy: heuristic
-  output_path: outputs/rollouts.npz
-  policy_checkpoint: outputs/policy.pt
-
-world_model:
-  hidden_size: 256
-  hidden_layers: 2
-  learning_rate: 0.001
-  batch_size: 512
-  epochs: 20
-  validation_fraction: 0.1
+  ent_coef: 0.005
+  epochs: 3
+  hidden_sizes: [512, 512, 256]
+  standardize_obs: true
   device: auto
-  eval_rollout_samples: 1000
-  eval_rollout_seed: 123
-  checkpoint_path: outputs/world_model.pt
+  checkpoints_save_folder: outputs/ppo/touch-v2
+  checkpoint_load_folder: outputs/ppo/touch-v2-1783697389330879500/50000796
+  add_unix_timestamp: true
+  save_every_ts: 250000
 
-planning:
-  horizon: 5
-  candidate_sequences: 64
-  discount: 0.99
-  execute_episodes: 10
-  max_steps: 1000
-  policy: heuristic
+eval:
+  checkpoint_folder: latest
+  mode: policy_vs_random
+  episodes: 20
+  max_steps: 4500
+  use_curriculum: false
+  deterministic: true
+  seed: 123
+  render: false
+  render_delay: 0.0
+
+rlbot:
+  checkpoint_folder: latest
+  deterministic: true
+  device: auto
